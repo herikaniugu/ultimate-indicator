@@ -1,0 +1,60 @@
+// © Kaniugu
+
+//@version=5
+indicator("Smart Money Concept", overlay = true)
+signal          = input.bool(true,  title = "Peak & Trough",     group = "Visibility")
+spread          = input.bool(false, title = "Spread Percentage", group = "Visibility")
+
+// VALUE
+var above       = float(na)
+var below       = float(na)
+
+// LEVEL
+var up          = float(na)
+var down        = float(na)
+up              := open >  close and open[1] <= close[1] ? close : up
+down            := open <= close and open[1] >  close[1] ? close : down
+
+// LOOK
+look(arr, index) => array.size(arr) > 3 ? array.get(arr, array.size(arr) - index) : na
+
+// DIRECTION
+var hx          = array.new_int(0)
+var lx          = array.new_int(0)
+var index       = array.new_int(0)
+var direction   = array.new_int(0)
+peak            = up   > up[1]
+trough          = down < down[1]
+
+if peak
+    array.push(index, bar_index)
+    array.push(direction, -1)
+if trough
+    array.push(index, bar_index)
+    array.push(direction,  1)
+
+// HHLL
+var hh          = array.new_float(0)
+var ll          = array.new_float(0), id = bar_index - look(index, 2)
+if peak   and look(direction, 1) != look(direction, 2)
+    array.push(hx, bar_index[id]), array.push(hh, high)
+if trough and look(direction, 1) != look(direction, 2)
+    array.push(lx, bar_index[id]), array.push(ll, low)
+
+// SPREAD
+if peak   and spread
+    label.new(bar_index, na, str.format("{0,number,#.#}", (close - below) / close * 100), yloc = yloc.abovebar, style = label.style_none, textcolor = color.red),  above := close
+if trough and spread
+    label.new(bar_index, na, str.format("{0,number,#.#}", (above - close) / above * 100), yloc = yloc.belowbar, style = label.style_none, textcolor = color.blue), below := close
+
+// LINE
+top             = bar_index - look(lx, 1)
+bottom          = bar_index - look(hx, 1)
+if ta.crossover(high, high[top])
+    line.new(bar_index - top,    high[top],   bar_index, high[top],   color = color.red,  width = 1)
+if ta.crossunder(low, low[bottom])
+    line.new(bar_index - bottom, low[bottom], bar_index, low[bottom], color = color.blue, width = 1)
+
+// DRAW
+plotshape(peak   and signal, style = shape.xcross,  color = color.red,  location = location.abovebar, size = size.tiny)
+plotshape(trough and signal, style = shape.diamond, color = color.blue, location = location.belowbar, size = size.tiny)

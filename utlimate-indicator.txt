@@ -1,0 +1,85 @@
+// © Kaniugu
+
+//@version=5
+indicator("Ultimate Indicator", overlay = true)
+
+// INPUT
+len             = input.int(200,   title = "Range",  minval = 1)
+period          = input.int(50,    title = "Period", minval = 1)
+factor          = input.float(1.0, title = "Factor", minval = 0.0)
+forecast        = input.bool(true, title = "Forecast",          group = "Visibility")
+signal          = input.bool(true, title = "Peak & Trough",     group = "Visibility")
+spread          = input.bool(true, title = "Spread Percentage", group = "Visibility")
+trendline       = input.bool(true, title = "Show Trendline",    group = "Visibility")
+direction       = input.bool(true, title = "Trend Direction",   group = "Visibility")
+
+// LINEAR REGRESSION
+channel(src, n) =>
+    avg         = math.sum(src, n) / n
+    slope       = ta.linreg(src, n, 0) - ta.linreg(src, n, 1)
+    intercept   = avg - slope * math.floor(n / 2) + ((1 - (n % 2)) / 2) * slope
+    linreg      = intercept  + slope * (n - 1), deviation = 0.0
+    for index = 0 to n - 1
+        deviation := deviation + math.pow(src[index] - (slope * (n - index) + intercept), 2)
+    deviation := math.sqrt(deviation / n) * factor
+    [linreg, intercept, deviation, slope, n]
+
+// POINT
+[linreg, intercept, deviation,     _, length] = channel(close, period)
+[     _,         _,         _, slope,      _] = channel(close, len)
+
+// LEVEL
+var up          = float(na)
+var down        = float(na)
+up              := open >  close and open[1] <= close[1] ? high : up
+down            := open <= close and open[1] >  close[1] ? low  : down
+
+var top         = float(na)
+var bottom      = float(na)
+top             := up   > up[1]   ? close : top
+bottom          := down < down[1] ? close : bottom
+
+// SIGNAL
+peak            = top    > top[1]    and close > linreg + deviation
+trough          = bottom < bottom[1] and close < linreg - deviation
+
+// SPREAD
+var above       = float(na)
+var below       = float(na)
+if peak   and spread
+    label.new(bar_index, na, str.format("{0,number,#.##}", (high  - below) / high  * 100), yloc = yloc.abovebar, style = label.style_none, textcolor = color.red),  above := high
+if trough and spread
+    label.new(bar_index, na, str.format("{0,number,#.##}", (above - low)   / above * 100), yloc = yloc.belowbar, style = label.style_none, textcolor = color.blue), below := low
+
+// UPDATE TRENDLINE
+var line median = na, var line resistance = na, var line support = na, var line upper = na, var line lower = na
+line.delete(median[1]), line.delete(resistance[1]), line.delete(support[1]), line.delete(upper[1]), line.delete(lower[1])
+
+// DRAW TRENDLINE
+median          := trendline ? line.new(bar_index - length + 1, intercept, bar_index, linreg, xloc.bar_index, extend.right, slope < 0 ? color.lime : color.aqua, line.style_dotted, 2) : na
+resistance      := trendline ? line.new(bar_index - length + 1, intercept + deviation, bar_index, linreg + deviation, xloc.bar_index, extend.right, color.red ,  line.style_dashed, 2) : na
+support         := trendline ? line.new(bar_index - length + 1, intercept - deviation, bar_index, linreg - deviation, xloc.bar_index, extend.right, color.blue,  line.style_dashed, 2) : na
+upper           := trendline ? line.new(bar_index - length + 1, intercept + deviation / 2, bar_index, linreg + deviation / 2, xloc.bar_index, extend.right, color.red , line.style_dashed, 1) : na
+lower           := trendline ? line.new(bar_index - length + 1, intercept - deviation / 2, bar_index, linreg - deviation / 2, xloc.bar_index, extend.right, color.blue, line.style_dashed, 1) : na
+
+// DRAW RIBBON
+ribbon = ta.ema(close, 24) > ta.ema(close, 8) ? color.aqua : color.lime
+plot(ta.ema(close,  8), color = color.new(ribbon, 40), title = "EMA 8")
+plot(ta.ema(close, 12), color = color.new(ribbon, 50), title = "EMA 12")
+plot(ta.ema(close, 16), color = color.new(ribbon, 60), title = "EMA 16")
+plot(ta.ema(close, 20), color = color.new(ribbon, 70), title = "EMA 20")
+plot(ta.ema(close, 24), color = color.new(ribbon, 80), title = "EMA 24")
+fill(plot((open + close) / 2, display = display.none), plot(ta.ema(close, 24), display = display.none), color = color.new(ribbon, 96))
+
+// DRAW SIGNAL
+plotshape(peak   and (forecast ? slope >= 0 : true)  and signal, style = shape.xcross,       color = color.red,  location = location.abovebar, size = size.tiny)
+plotshape(trough and (forecast ? slope <= 0 : true)  and signal, style = shape.diamond,      color = color.blue, location = location.belowbar, size = size.tiny)
+plotshape(peak   and (forecast ? slope <  0 : false) and signal, style = shape.triangledown, color = color.red,  location = location.abovebar, size = size.tiny)
+plotshape(trough and (forecast ? slope >  0 : false) and signal, style = shape.triangleup,   color = color.blue, location = location.belowbar, size = size.tiny)
+bgcolor(direction ? color.new(slope > 0 ? color.teal : color.maroon, 80) : na)
+
+// SIGNAL
+if peak   and slope < 0
+    alert(message = "Entry Short",  freq = alert.freq_once_per_bar_close)
+if trough and slope > 0
+    alert(message = "Entry Long",   freq = alert.freq_once_per_bar_close)

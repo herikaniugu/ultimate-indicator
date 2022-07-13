@@ -1,0 +1,49 @@
+// © Kaniugu
+
+//@version=5
+indicator("UV Indicator", overlay = true)
+period          = input.int(28,         title = "Period")
+source          = input.source(close,   title = "Source")
+spread          = input.bool(true,      title = "Spread Percentage",    group = "Visibility")
+signal          = input.bool(true,      title = "Resistance & Support", group = "Visibility")
+direction       = input.bool(true,      title = "Trend Direction",      group = "Visibility")
+vwapline        = input.bool(false,     title = "VWAP Line",            group = "Visibility")
+
+// VALUE
+var top         = float(na)
+var bottom      = float(na)
+
+// AVERAGE
+vwap            = ta.sma(ta.vwap, period)
+vwapma          = ta.sma(vwap,    14)
+sma             = ta.sma(close,   14)
+
+// OSCILLATOR
+vwapvo          = (vwap    - vwapma) / vwapma * 100
+vwappo          = (source  - vwap)   / vwap   * 100
+vwapmao         = (sma     - vwapma) / vwapma * 100
+
+// LEVEL
+slope           = vwapmao < vwapmao[1] ? (vwapmao < vwapvo ? -1 : -2) : (vwapmao > vwapmao[1] ? (vwapmao > vwapvo ? 1 : 2) : 0)
+resistance      = ta.crossover(vwapmao,  vwappo) and source > vwap and vwapmao > vwapvo
+support         = ta.crossunder(vwapmao, vwappo) and source < vwap and vwapmao < vwapvo
+
+// SPREAD
+if resistance and spread
+    label.new(bar_index, na, str.format("{0,number,#.#}", (close - bottom) / close * 100), yloc = yloc.abovebar, style = label.style_none, textcolor = color.red),  top    := close
+if support    and spread
+    label.new(bar_index, na, str.format("{0,number,#.#}", (top   - close)  / top * 100),   yloc = yloc.belowbar, style = label.style_none, textcolor = color.blue), bottom := close
+
+// DRAW
+plotshape(resistance and slope <  0 and signal, title = "High Resistance", style = shape.square, color = color.red,  location = location.abovebar, size = size.tiny)
+plotshape(support    and slope >  0 and signal, title = "High Support",    style = shape.square, color = color.blue, location = location.belowbar, size = size.tiny)
+plotshape(resistance and slope >= 0 and signal, title = "Low Resistance",  style = shape.circle, color = color.red,  location = location.abovebar, size = size.tiny)
+plotshape(support    and slope <= 0 and signal, title = "Low Support",     style = shape.circle, color = color.blue, location = location.belowbar, size = size.tiny)
+bgcolor(direction ? color.new(slope > 0 ? color.teal : color.maroon, math.abs(slope) > 1 ? 80 : 90) : na)
+plot(vwapline     ? vwap : na, title = "VWAP Line", linewidth = 4, color = color.new(color.silver, 80))
+
+// SIGNAL
+if resistance and slope < 0
+    alert(message = "Entry Short",  freq = alert.freq_once_per_bar_close)
+if support    and slope > 0
+    alert(message = "Entry Long",   freq = alert.freq_once_per_bar_close)
