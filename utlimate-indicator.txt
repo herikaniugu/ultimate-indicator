@@ -2,8 +2,6 @@
 
 //@version=5
 indicator("Ultimate Indicator", overlay = true)
-
-// INPUT
 len             = input.int(200,   title = "Range",  minval = 1)
 period          = input.int(50,    title = "Period", minval = 1)
 factor          = input.float(1.0, title = "Factor", minval = 0.0)
@@ -25,8 +23,7 @@ channel(src, n) =>
     [linreg, intercept, deviation, slope, n]
 
 // POINT
-[linreg, intercept, deviation,     _, length] = channel(close, period)
-[     _,         _,         _, slope,      _] = channel(close, len)
+[linreg, intercept, deviation, _, length] = channel(close, period), [_, _, _, slope, _] = channel(close, len)
 
 // LEVEL
 var up          = float(na)
@@ -52,15 +49,13 @@ if trough and spread
     label.new(bar_index, na, str.format("{0,number,#.##}", (above - low)   / above * 100), yloc = yloc.belowbar, style = label.style_none, textcolor = color.blue), below := low
 
 // UPDATE TRENDLINE
-var line median = na, var line resistance = na, var line support = na, var line upper = na, var line lower = na
-line.delete(median[1]), line.delete(resistance[1]), line.delete(support[1]), line.delete(upper[1]), line.delete(lower[1])
+var line median = na, var line resistance = na, var line support = na
+line.delete(median[1]), line.delete(resistance[1]), line.delete(support[1])
 
 // DRAW TRENDLINE
 median          := trendline ? line.new(bar_index - length + 1, intercept, bar_index, linreg, xloc.bar_index, extend.right, slope < 0 ? color.lime : color.aqua, line.style_dotted, 2) : na
 resistance      := trendline ? line.new(bar_index - length + 1, intercept + deviation, bar_index, linreg + deviation, xloc.bar_index, extend.right, color.red ,  line.style_dashed, 2) : na
 support         := trendline ? line.new(bar_index - length + 1, intercept - deviation, bar_index, linreg - deviation, xloc.bar_index, extend.right, color.blue,  line.style_dashed, 2) : na
-upper           := trendline ? line.new(bar_index - length + 1, intercept + deviation / 2, bar_index, linreg + deviation / 2, xloc.bar_index, extend.right, color.red , line.style_dashed, 1) : na
-lower           := trendline ? line.new(bar_index - length + 1, intercept - deviation / 2, bar_index, linreg - deviation / 2, xloc.bar_index, extend.right, color.blue, line.style_dashed, 1) : na
 
 // DRAW RIBBON
 ribbon = ta.ema(close, 24) > ta.ema(close, 8) ? color.aqua : color.lime

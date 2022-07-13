@@ -32,10 +32,10 @@ peak                    := ta.crossunder(low, look(down, 1)) ? HIGH : peak
 trough                  := ta.crossover(high, look(up,   1)) ? LOW  : trough
 
 // DRAW SIGNAL
-plotshape(peak   > peak[1],   style = shape.circle, color = color.red,  location = location.abovebar, size = size.tiny)
-plotshape(trough < trough[1], style = shape.circle, color = color.blue, location = location.belowbar, size = size.tiny)
-plotshape(peak   < peak[1],   style = shape.cross,  color = color.red,  location = location.abovebar, size = size.tiny)
-plotshape(trough > trough[1], style = shape.cross,  color = color.blue, location = location.belowbar, size = size.tiny)
+plotshape(peak   > peak[1],   style = shape.labeldown, color = color.red,  location = location.abovebar, size = size.tiny)
+plotshape(trough < trough[1], style = shape.labelup,   color = color.blue, location = location.belowbar, size = size.tiny)
+plotshape(peak   < peak[1],   style = shape.cross,     color = color.red,  location = location.abovebar, size = size.tiny)
+plotshape(trough > trough[1], style = shape.cross,     color = color.blue, location = location.belowbar, size = size.tiny)
 
 // DRAW TIMEFRAME
 var line resistance = na, line.delete(resistance[1]), resistance := candlestick and offset > 0 ? line.new(bar_index - offset + 1, HIGH, bar_index + 2, HIGH, xloc.bar_index, extend.none, color.red,    line.style_dotted, 2) : na
